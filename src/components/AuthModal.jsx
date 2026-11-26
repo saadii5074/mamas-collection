@@ -13,6 +13,8 @@ import {
 } from 'lucide-react';
 import { QUETTA_AREAS } from '../data/mockData';
 
+import { sanitizeInput, checkRateLimit, recordFailedAttempt, resetRateLimit } from '../services/marketplaceService';
+
 export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   if (!isOpen) return null;
 
@@ -24,10 +26,21 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
   const [generatedOtp, setGeneratedOtp] = useState('7890');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+
+  // Cooldown countdown timer
+  React.useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const interval = setInterval(() => {
+      setResendCooldown(prev => (prev <= 1 ? 0 : prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [resendCooldown]);
 
   const handleSendOtp = (e) => {
-    e.preventDefault();
-    if (!name.trim()) {
+    if (e && e.preventDefault) e.preventDefault();
+    const cleanName = sanitizeInput(name);
+    if (!cleanName) {
       setError('Please enter your full name.');
       return;
     }
@@ -37,35 +50,62 @@ export default function AuthModal({ isOpen, onClose, onLoginSuccess }) {
       return;
     }
 
+    // Rate limiting check
+    const rateStatus = checkRateLimit(`otp_send_${cleanPhone}`, 4, 300);
+    if (rateStatus.isLocked) {
+      setError(`Security Alert: Too many OTP requests for this number. Please wait ${rateStatus.remainingSeconds}s.`);
+      return;
+    }
+
+    recordFailedAttempt(`otp_send_${cleanPhone}`, 4, 300);
     setLoading(true);
     setError('');
 
     // Generate random 4-digit OTP
     const code = Math.floor(1000 + Math.random() * 9000).toString();
     setGeneratedOtp(code);
+    setResendCooldown(45);
 
     setTimeout(() => {
       setLoading(false);
       setStep(2);
-    }, 600);
+    }, 500);
   };
 
   const handleVerifyOtp = (e) => {
     e.preventDefault();
+    const cleanPhone = phone.replace(/[^0-9]/g, '');
+    
+    // Check verification brute force
+    const rateStatus = checkRateLimit(`otp_verify_${cleanPhone}`, 5, 300);
+    if (rateStatus.isLocked) {
+      setError(`Security Lockout: 5 incorrect attempts. Try again in ${rateStatus.remainingSeconds}s.`);
+      return;
+    }
+
     if (otp.trim() === generatedOtp || otp.trim() === '1234') {
+      resetRateLimit(`otp_verify_${cleanPhone}`);
+      resetRateLimit(`otp_send_${cleanPhone}`);
+
+      const cleanName = sanitizeInput(name);
       const newUser = {
         id: `user_${Date.now().toString().slice(-4)}`,
-        name: name.trim(),
+        name: cleanName,
         phone: phone.trim(),
-        area: `${area}, Quetta`,
+        area: `${sanitizeInput(area)}, Quetta`,
         cnicVerified: true,
         role: 'user',
-        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(name)}`
+        avatar: `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(cleanName)}`
       };
       onLoginSuccess(newUser);
       onClose();
     } else {
-      setError(`Ghalat OTP! Aapka code ${generatedOtp} hai.`);
+      const fail = recordFailedAttempt(`otp_verify_${cleanPhone}`, 5, 300);
+      if (fail.count >= 5) {
+        setError('Security Lockout: 5 dafa galat OTP enter karne par number 5 minute ke liye lock ho gaya hai.');
+      } else {
+        setError(`Ghalat OTP! (${5 - fail.count} attempts baqi hain). Code: ${generatedOtp}`);
+      }
     }
   };
 

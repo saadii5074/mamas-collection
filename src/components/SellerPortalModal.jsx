@@ -14,9 +14,11 @@ import {
   Video,
   Trash2,
   Film,
-  Image as ImageIcon
+  Image as ImageIcon,
+  Lock
 } from 'lucide-react';
 import { QUETTA_AREAS, EVENT_CATEGORIES, COLOR_PALETTE } from '../data/mockData';
+import { validateUploadedFile, sanitizeInput } from '../services/marketplaceService';
 import WhatsAppIcon from './WhatsAppIcon';
 
 export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
@@ -72,6 +74,15 @@ export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
     const files = Array.from(e.target.files);
     if (!files.length) return;
 
+    for (const file of files) {
+      const validation = validateUploadedFile(file, 'image');
+      if (!validation.isValid) {
+        setErrorMsg(validation.error);
+        e.target.value = '';
+        return;
+      }
+    }
+
     files.forEach(file => {
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -82,6 +93,7 @@ export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
       };
       reader.readAsDataURL(file);
     });
+    setErrorMsg('');
   };
 
   const handleRemoveImage = (index) => {
@@ -100,9 +112,18 @@ export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
   const handleVideoFile = (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    const validation = validateUploadedFile(file, 'video');
+    if (!validation.isValid) {
+      setErrorMsg(validation.error);
+      e.target.value = '';
+      return;
+    }
+
     setVideoFileName(file.name);
     const videoObjUrl = URL.createObjectURL(file);
     setVideoUrl(videoObjUrl);
+    setErrorMsg('');
   };
 
   const handleRemoveVideo = () => {
@@ -169,10 +190,16 @@ export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
 
     const finalImages = images.length > 0 ? images : [imageUrl.trim() || defaultImg];
 
+    const cleanTitle = sanitizeInput(title);
+    const cleanTitleUrdu = sanitizeInput(titleUrdu || title);
+    const cleanSellerName = sanitizeInput(sellerName);
+    const cleanSellerPhone = sanitizeInput(sellerPhone);
+    const cleanDescription = sanitizeInput(description || 'Listed on Mamas Collection Quetta verified marketplace.');
+
     const newListing = {
       id: `MC-QTA-${Date.now().toString().slice(-4)}`,
-      title: title.trim(),
-      titleUrdu: titleUrdu.trim() || title.trim(),
+      title: cleanTitle,
+      titleUrdu: cleanTitleUrdu,
       category,
       isOfficial: false,
       listingType, // strictly 'rent' or 'buy'
@@ -188,17 +215,17 @@ export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
       color: colorObj,
       sizes: selectedSizes,
       measurements: category === 'bridal' || category === 'garments' ? {
-        chest,
-        waist,
-        length,
-        flare,
-        alterationMargin
+        chest: sanitizeInput(chest),
+        waist: sanitizeInput(waist),
+        length: sanitizeInput(length),
+        flare: sanitizeInput(flare),
+        alterationMargin: sanitizeInput(alterationMargin)
       } : null,
       quettaArea,
       vendor: {
-        name: sellerName.trim(),
+        name: cleanSellerName,
         isOfficial: false,
-        phone: sellerPhone.trim(),
+        phone: cleanSellerPhone,
         verified: true,
         city: 'Quetta'
       },
@@ -213,7 +240,7 @@ export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
       inStock: true,
       condition,
       featured: false,
-      description: description.trim() || 'Listed on Mamas Collection Quetta verified marketplace.'
+      description: cleanDescription
     };
 
     onAddListing(newListing);

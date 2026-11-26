@@ -11,7 +11,7 @@ import {
   Phone
 } from 'lucide-react';
 import WhatsAppIcon from './WhatsAppIcon';
-import { checkMessageSafety } from '../services/marketplaceService';
+import { checkMessageSafety, sanitizeInput } from '../services/marketplaceService';
 
 export default function ChatModal({
   isOpen,
@@ -58,11 +58,13 @@ export default function ChatModal({
     }
     setSecurityWarning('');
 
+    const cleanText = sanitizeInput(messageText.trim());
+
     const newMsg = {
       id: Date.now(),
       sender: 'user',
       senderName: 'You (Buyer)',
-      text: messageText.trim(),
+      text: cleanText,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     };
 

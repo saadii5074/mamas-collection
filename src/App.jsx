@@ -25,7 +25,9 @@ import {
   setActiveUser as saveActiveUser, 
   DEFAULT_USERS, 
   incrementProductView, 
-  toggleProductLike 
+  toggleProductLike,
+  verifyCartPriceIntegrity,
+  sanitizeInput
 } from './services/marketplaceService';
 import { 
   Sparkles, 
@@ -262,10 +264,26 @@ export default function App() {
   };
 
   const handleCompleteOrder = (orderData) => {
+    // 🛡️ Enterprise Financial Integrity Check (Anti-Price Tampering)
+    const { verifiedItems, hasTampering } = verifyCartPriceIntegrity(orderData.items, products);
+
+    const cleanSubtotal = verifiedItems.reduce((acc, item) => {
+      return acc + (item.bookingMode === 'rent' ? (item.rentAmount || 0) : (item.totalPrice || 0));
+    }, 0);
+    const cleanSecurity = verifiedItems.reduce((acc, item) => {
+      return acc + (item.bookingMode === 'rent' ? (item.securityDeposit || 0) : 0);
+    }, 0);
+
     const orderWithStatus = {
       ...orderData,
-      status: 'Pending Verification'
+      items: verifiedItems,
+      subtotalItems: cleanSubtotal,
+      totalSecurityDeposit: cleanSecurity,
+      grandTotal: cleanSubtotal + cleanSecurity,
+      status: 'Pending Verification',
+      priceTamperedDetected: hasTampering
     };
+
     setOrders([orderWithStatus, ...orders]);
     setCartItems([]);
     setIsCheckoutOpen(false);

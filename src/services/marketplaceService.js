@@ -156,3 +156,181 @@ export function toggleProductLike(productId, products, setProducts) {
   });
   return isNowLiked;
 }
+
+// 5. Enterprise Security & Anti-XSS Engine
+export function sanitizeInput(input, maxLength = 2000) {
+  if (typeof input !== 'string') return '';
+  
+  // 1. Cap input length to prevent ReDoS / Buffer exploits
+  let clean = input.slice(0, maxLength);
+
+  // 2. Strip dangerous script tags and execution wrappers
+  clean = clean.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '');
+  clean = clean.replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '');
+  clean = clean.replace(/<object\b[^<]*(?:(?!<\/object>)<[^<]*)*<\/object>/gi, '');
+  clean = clean.replace(/<embed\b[^<]*(?:(?!<\/embed>)<[^<]*)*<\/embed>/gi, '');
+
+  // 3. Strip inline event handlers (onerror=, onload=, onclick=, etc.)
+  clean = clean.replace(/on\w+\s*=\s*(?:'[^']*'|"[^"]*"|[^\s>]+)/gi, '');
+
+  // 4. Strip dangerous pseudo-protocols
+  clean = clean.replace(/javascript\s*:/gi, '');
+  clean = clean.replace(/vbscript\s*:/gi, '');
+  clean = clean.replace(/data\s*:\s*text\/html/gi, '');
+
+  // 5. Escape raw HTML markup to safe entities
+  clean = clean
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#x27;');
+
+  return clean.trim();
+}
+
+// 6. Strict File Upload Quarantine & Antivirus Gate
+export const ALLOWED_FILE_TYPES = {
+  image: {
+    extensions: ['jpg', 'jpeg', 'png', 'webp'],
+    mimeTypes: ['image/jpeg', 'image/png', 'image/webp'],
+    maxSizeBytes: 5 * 1024 * 1024, // 5MB
+    label: 'JPG, PNG, WebP (Max 5MB)'
+  },
+  video: {
+    extensions: ['mp4', 'webm', 'mov'],
+    mimeTypes: ['video/mp4', 'video/webm', 'video/quicktime'],
+    maxSizeBytes: 30 * 1024 * 1024, // 30MB
+    label: 'MP4, WebM (Max 30MB)'
+  }
+};
+
+export const DANGEROUS_EXTENSIONS = [
+  'exe', 'bat', 'cmd', 'sh', 'php', 'phtml', 'php3', 'php4', 'php5',
+  'js', 'mjs', 'vbs', 'scr', 'jar', 'html', 'htm', 'svg', 'dll', 'com',
+  'apk', 'msi', 'bin', 'py', 'rb', 'pl', 'cgi'
+];
+
+export function validateUploadedFile(file, type = 'image') {
+  if (!file) return { isValid: false, error: 'No file provided' };
+
+  const fileName = file.name.toLowerCase();
+  const fileExt = fileName.split('.').pop();
+  const rules = ALLOWED_FILE_TYPES[type];
+
+  // 1. Check for double extension attacks (e.g., photo.jpg.exe)
+  for (const badExt of DANGEROUS_EXTENSIONS) {
+    if (fileName.includes(`.${badExt}`)) {
+      return {
+        isValid: false,
+        error: `Security Alert: Dangerous executable or script file detected (.${badExt}). Upload strictly blocked.`
+      };
+    }
+  }
+
+  // 2. Verify extension against whitelist
+  if (!rules.extensions.includes(fileExt)) {
+    return {
+      isValid: false,
+      error: `Invalid file extension .${fileExt}. Only ${rules.label} files are permitted.`
+    };
+  }
+
+  // 3. Verify MIME type
+  if (file.type && !rules.mimeTypes.includes(file.type)) {
+    return {
+      isValid: false,
+      error: `MIME type mismatch (${file.type}). File format disguised or corrupted.`
+    };
+  }
+
+  // 4. Verify file size
+  if (file.size > rules.maxSizeBytes) {
+    const maxMB = rules.maxSizeBytes / (1024 * 1024);
+    return {
+      isValid: false,
+      error: `File is too large (${(file.size / (1024 * 1024)).toFixed(1)}MB). Maximum allowed is ${maxMB}MB.`
+    };
+  }
+
+  return { isValid: true };
+}
+
+// 7. Rate Limiting & Anti-Brute Force Vault
+export function checkRateLimit(actionKey, maxAttempts = 5, lockDurationSeconds = 300) {
+  const now = Date.now();
+  const raw = sessionStorage.getItem(`rl_${actionKey}`);
+  let data = raw ? JSON.parse(raw) : { count: 0, lockUntil: 0 };
+
+  if (data.lockUntil && now < data.lockUntil) {
+    const remaining = Math.ceil((data.lockUntil - now) / 1000);
+    return {
+      isLocked: true,
+      remainingSeconds: remaining,
+      message: `Security Lockout: Too many failed attempts. Try again in ${remaining}s.`
+    };
+  }
+
+  return { isLocked: false, remainingSeconds: 0 };
+}
+
+export function recordFailedAttempt(actionKey, maxAttempts = 5, lockDurationSeconds = 300) {
+  const now = Date.now();
+  const raw = sessionStorage.getItem(`rl_${actionKey}`);
+  let data = raw ? JSON.parse(raw) : { count: 0, lockUntil: 0 };
+
+  data.count += 1;
+  if (data.count >= maxAttempts) {
+    data.lockUntil = now + (lockDurationSeconds * 1000);
+  }
+
+  sessionStorage.setItem(`rl_${actionKey}`, JSON.stringify(data));
+  return data;
+}
+
+export function resetRateLimit(actionKey) {
+  sessionStorage.removeItem(`rl_${actionKey}`);
+}
+
+// 8. Financial Integrity & Price Tampering Verifier
+export function verifyCartPriceIntegrity(cartItems, catalogProducts) {
+  let hasTampering = false;
+  const verifiedItems = cartItems.map(item => {
+    const original = catalogProducts.find(p => p.id === item.product?.id);
+    if (!original) return item;
+
+    // Check if price was manipulated
+    if (item.bookingMode === 'buy') {
+      if (item.totalPrice !== original.price) {
+        hasTampering = true;
+        return {
+          ...item,
+          totalPrice: original.price,
+          product: original
+        };
+      }
+    } else if (item.bookingMode === 'rent') {
+      const genuineDailyRate = original.rentRate?.daily || 0;
+      const genuineSecurity = original.securityDeposit || 0;
+      const expectedTotal = (genuineDailyRate * (item.rentalDuration || 1)) + genuineSecurity;
+      
+      if (item.totalPrice !== expectedTotal) {
+        hasTampering = true;
+        return {
+          ...item,
+          totalPrice: expectedTotal,
+          securityDeposit: genuineSecurity,
+          rentAmount: genuineDailyRate * (item.rentalDuration || 1),
+          product: original
+        };
+      }
+    }
+
+    return item;
+  });
+
+  return {
+    verifiedItems,
+    hasTampering
+  };
+}

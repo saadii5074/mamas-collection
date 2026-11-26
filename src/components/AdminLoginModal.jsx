@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Lock, User, Eye, EyeOff, ShieldCheck, X, Crown, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Lock, User, Eye, EyeOff, ShieldCheck, X, Crown, AlertCircle, ShieldAlert } from 'lucide-react';
+import { checkRateLimit, recordFailedAttempt, resetRateLimit, sanitizeInput } from '../services/marketplaceService';
 
 export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
   if (!isOpen) return null;
@@ -9,26 +10,68 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [lockoutSec, setLockoutSec] = useState(0);
+
+  // Check rate limit on mount / tick
+  useEffect(() => {
+    const status = checkRateLimit('admin_auth', 5, 300);
+    if (status.isLocked) {
+      setLockoutSec(status.remainingSeconds);
+      setError(status.message);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (lockoutSec <= 0) return;
+    const timer = setInterval(() => {
+      setLockoutSec(prev => {
+        if (prev <= 1) {
+          setError('');
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [lockoutSec]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
+
+    // Check rate limit
+    const status = checkRateLimit('admin_auth', 5, 300);
+    if (status.isLocked) {
+      setLockoutSec(status.remainingSeconds);
+      setError(`Security Alert: Brute force prevention active. Try again in ${status.remainingSeconds}s.`);
+      return;
+    }
+
     setError('');
     setLoading(true);
 
     setTimeout(() => {
-      // Valid credentials: admin/mamas/saadii with mamas123 or quetta2026
+      const cleanUser = sanitizeInput(username).trim().toLowerCase();
+      const cleanPass = password.trim();
+
       const validUsers = ['admin', 'mamas', 'saadii'];
       const validPass = ['mamas123', 'quetta2026', 'admin123'];
 
-      if (validUsers.includes(username.trim().toLowerCase()) && validPass.includes(password.trim())) {
+      if (validUsers.includes(cleanUser) && validPass.includes(cleanPass)) {
+        resetRateLimit('admin_auth');
         setLoading(false);
         onLoginSuccess();
         onClose();
       } else {
+        const failData = recordFailedAttempt('admin_auth', 5, 300);
         setLoading(false);
-        setError('Ghalat Username ya Password! Default: Username "admin" aur Password "mamas123" use karein.');
+        if (failData.count >= 5) {
+          setLockoutSec(300);
+          setError('Security Lockout: 5 dafa galat password enter karne par system 5 minute ke liye lock ho gaya hai.');
+        } else {
+          setError(`Ghalat Username ya Password! (${5 - failData.count} attempts baqi hain). Default: admin / mamas123`);
+        }
       }
-    }, 400);
+    }, 500);
   };
 
   const handleQuickDemoFill = () => {
@@ -137,11 +180,20 @@ export default function AdminLoginModal({ isOpen, onClose, onLoginSuccess }) {
           {/* Submit Button */}
           <button
             type="submit"
-            disabled={loading}
-            className="w-full bg-gradient-to-r from-festiva-burgundy to-festiva-maroon hover:from-festiva-maroon hover:to-festiva-burgundy text-white font-bold py-3 px-4 rounded-xl shadow-lg shadow-festiva-burgundy/25 transition-all flex items-center justify-center gap-2 group active:scale-98"
+            disabled={loading || lockoutSec > 0}
+            className={`w-full font-bold py-3 px-4 rounded-xl shadow-lg transition-all flex items-center justify-center gap-2 group active:scale-98 ${
+              lockoutSec > 0 
+                ? 'bg-stone-300 text-stone-500 cursor-not-allowed'
+                : 'bg-gradient-to-r from-festiva-burgundy to-festiva-maroon hover:from-festiva-maroon hover:to-festiva-burgundy text-white shadow-festiva-burgundy/25'
+            }`}
           >
             {loading ? (
               <span className="inline-block w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : lockoutSec > 0 ? (
+              <>
+                <ShieldAlert className="w-4 h-4 text-red-500" />
+                <span>Security Locked ({lockoutSec}s)</span>
+              </>
             ) : (
               <>
                 <ShieldCheck className="w-4 h-4 text-festiva-lightgold" />

@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { PAYMENT_METHODS, QUETTA_AREAS } from '../data/mockData';
 import { EasyPaisaLogo, JazzCashLogo, OneLinkLogo, BankTransferLogo } from './PaymentLogos';
+import { sanitizeInput } from '../services/marketplaceService';
 
 export default function CheckoutModal({
   isOpen,
@@ -64,19 +65,25 @@ export default function CheckoutModal({
       return;
     }
 
+    const cleanName = sanitizeInput(customerName);
+    const cleanPhone = sanitizeInput(customerPhone);
+    const cleanCnic = sanitizeInput(customerCnic);
+    const cleanAddress = sanitizeInput(deliveryAddress);
+    const cleanTrx = sanitizeInput(transactionId);
+
     const orderData = {
       orderId: `MC-QTA-${Date.now().toString().slice(-6)}`,
       createdAt: new Date().toISOString(),
       customer: {
-        name: customerName,
-        phone: customerPhone,
-        cnic: customerCnic || 'N/A',
+        name: cleanName,
+        phone: cleanPhone,
+        cnic: cleanCnic || 'N/A',
         area: selectedQuettaArea,
-        address: deliveryAddress
+        address: cleanAddress
       },
       payment: {
         method: paymentMethod,
-        transactionId: transactionId || 'COD-PENDING',
+        transactionId: cleanTrx || 'COD-PENDING',
         status: paymentMethod === 'cod' ? 'Cash on Delivery' : 'Paid / Verification Pending'
       },
       items,
