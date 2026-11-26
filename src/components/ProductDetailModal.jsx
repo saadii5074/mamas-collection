@@ -105,13 +105,13 @@ export default function ProductDetailModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div 
-        className="bg-white rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border border-festiva-sand my-8 max-h-[92vh] flex flex-col"
+        className="bg-white rounded-t-[28px] sm:rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border-t sm:border border-festiva-sand max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header Bar */}
-        <div className="flex items-center justify-between px-5 py-3.5 border-b border-festiva-sand bg-festiva-blush/60">
+        <div className="flex items-center justify-between px-4 sm:px-5 py-3 sm:py-3.5 border-b border-festiva-sand bg-festiva-blush/60">
           <div className="flex items-center gap-2">
             <span className="w-2.5 h-2.5 rounded-full bg-festiva-burgundy animate-ping" />
             <span className="font-serif font-bold text-festiva-maroon text-sm sm:text-base">
@@ -129,7 +129,7 @@ export default function ProductDetailModal({
         </div>
 
         {/* Modal Body */}
-        <div className="overflow-y-auto p-5 sm:p-6 space-y-6">
+        <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 pb-12 sm:pb-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             
             {/* Left Column: Image Gallery & Video Showcase */}

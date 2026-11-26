@@ -248,9 +248,9 @@ export default function SellerPortalModal({ isOpen, onClose, onAddListing }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div 
-        className="bg-white rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-festiva-sand my-8 flex flex-col max-h-[92vh]"
+        className="bg-white rounded-t-[28px] sm:rounded-3xl max-w-2xl w-full overflow-hidden shadow-2xl border border-festiva-sand my-0 sm:my-8 flex flex-col max-h-[92vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

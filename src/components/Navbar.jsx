@@ -39,26 +39,26 @@ export default function Navbar({
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-festiva-sand shadow-sm transition-all">
       {/* Top Festive Announcement Bar */}
-      <div className="bg-gradient-to-r from-festiva-maroon via-festiva-burgundy to-festiva-maroon text-white text-xs py-2 px-4">
-        <div className="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
-          <div className="flex items-center gap-2">
-            <span className="bg-festiva-gold/20 text-festiva-lightgold font-bold px-2 py-0.5 rounded text-[10px] tracking-wider uppercase border border-festiva-gold/40">
-              Quetta Launch
+      <div className="bg-gradient-to-r from-festiva-maroon via-festiva-burgundy to-festiva-maroon text-white text-[11px] py-1.5 sm:py-2 px-3 sm:px-4">
+        <div className="max-w-7xl mx-auto flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0">
+            <span className="bg-festiva-gold/20 text-festiva-lightgold font-bold px-1.5 sm:px-2 py-0.5 rounded text-[9px] sm:text-[10px] tracking-wider uppercase border border-festiva-gold/40 flex-shrink-0">
+              Quetta
             </span>
-            <span className="hidden sm:inline font-medium text-festiva-lightgold">
-              ✨ ماماس کلیکشن - شادیوں اور ایونٹس کے لیے برائیڈل سوٹس اور رینٹل مارکیٹ پلیس
+            <span className="hidden sm:inline font-medium text-festiva-lightgold truncate">
+              ✨ ماماس کلیکشن - برائیڈل سوٹس اور رینٹل مارکیٹ پلیس
             </span>
-            <span className="sm:hidden font-medium text-festiva-lightgold">
+            <span className="sm:hidden font-medium text-festiva-lightgold text-[10px] truncate">
               ماماس کلیکشن کوئیٹہ
             </span>
           </div>
 
-          <div className="flex items-center gap-4 text-[11px]">
+          <div className="flex items-center gap-2.5 sm:gap-4 text-[10px] sm:text-[11px] flex-shrink-0">
             {/* Simulation Role Switcher */}
             {activeUser && (
               <button
                 onClick={onSwitchRole}
-                className="hidden sm:flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[10px] text-festiva-lightgold font-mono transition-all border border-white/20"
+                className="hidden md:flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[10px] text-festiva-lightgold font-mono transition-all border border-white/20"
                 title="Switch demo account to test buyer vs seller communication"
               >
                 <RefreshCw className="w-3 h-3 text-festiva-gold" />
@@ -71,27 +71,27 @@ export default function Navbar({
               href="https://wa.me/923070816990?text=Hello%20Mamas%20Collection%20Quetta!" 
               target="_blank" 
               rel="noreferrer"
-              className="flex items-center gap-1.5 hover:text-festiva-lightgold transition-colors font-semibold"
+              className="flex items-center gap-1 hover:text-festiva-lightgold transition-colors font-semibold"
             >
               <WhatsAppIcon className="w-3.5 h-3.5 text-emerald-400" />
-              <span>WhatsApp: 0307-0816990</span>
+              <span className="hidden xs:inline sm:inline">0307-0816990</span>
             </a>
             <span className="text-white/40">|</span>
             <button 
               onClick={onOpenAdmin}
-              className={`flex items-center gap-1.5 font-semibold transition-colors ${
+              className={`flex items-center gap-1 font-semibold transition-colors ${
                 isAdminActive ? 'text-festiva-lightgold underline' : 'hover:text-festiva-lightgold'
               }`}
             >
               {isAdminAuthenticated ? (
                 <>
                   <Crown className="w-3.5 h-3.5 text-festiva-gold" />
-                  <span>Admin Control Room</span>
+                  <span className="hidden xs:inline">Control Room</span>
                 </>
               ) : (
                 <>
-                  <Lock className="w-3.5 h-3.5 text-festiva-gold" />
-                  <span>Admin Login</span>
+                  <Lock className="w-3 h-3 text-festiva-gold" />
+                  <span>Admin</span>
                 </>
               )}
             </button>
@@ -100,25 +100,25 @@ export default function Navbar({
       </div>
 
       {/* Main Navigation Row */}
-      <div className="max-w-7xl mx-auto px-4 py-3 sm:py-4">
-        <div className="flex items-center justify-between gap-3 sm:gap-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-4 py-2.5 sm:py-3.5">
+        <div className="flex items-center justify-between gap-2 sm:gap-6">
           
           {/* Brand Logo */}
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => setActiveMode('all')}>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-festiva-burgundy to-festiva-maroon flex items-center justify-center text-festiva-gold shadow-festive border border-festiva-gold/30">
-              <span className="font-serif font-bold text-2xl sm:text-3xl leading-none">M</span>
+          <div className="flex items-center gap-2 sm:gap-3 cursor-pointer" onClick={() => setActiveMode('all')}>
+            <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-xl bg-gradient-to-br from-festiva-burgundy to-festiva-maroon flex items-center justify-center text-festiva-gold shadow-festive border border-festiva-gold/30 flex-shrink-0">
+              <span className="font-serif font-bold text-xl sm:text-2xl leading-none">M</span>
             </div>
             <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-serif text-xl sm:text-2xl font-bold tracking-tight text-festiva-maroon">
+              <div className="flex items-center gap-1 sm:gap-1.5">
+                <span className="font-serif text-base sm:text-xl md:text-2xl font-bold tracking-tight text-festiva-maroon leading-tight">
                   Mamas Collection
                 </span>
                 <span className="hidden md:inline-block px-1.5 py-0.5 rounded text-[9px] font-bold bg-festiva-gold text-festiva-maroon uppercase">
                   Quetta
                 </span>
               </div>
-              <p className="text-[10px] sm:text-xs text-stone-500 font-medium tracking-wide">
-                Luxury Bridal, Garments & P2P Rental
+              <p className="text-[9px] sm:text-xs text-stone-500 font-medium tracking-wide hidden xs:block">
+                Luxury Bridal & P2P Rental
               </p>
             </div>
           </div>
@@ -155,12 +155,12 @@ export default function Navbar({
           </div>
 
           {/* Right Action Buttons */}
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1.5 sm:gap-2.5">
             {/* Mode Switcher: Buy vs Rent */}
-            <div className="flex p-0.5 bg-festiva-blush rounded-full border border-festiva-sand text-xs font-semibold">
+            <div className="flex p-0.5 bg-festiva-blush rounded-full border border-festiva-sand text-[11px] sm:text-xs font-semibold">
               <button
                 onClick={() => setActiveMode('buy')}
-                className={`px-3 py-1.5 rounded-full transition-all ${
+                className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full transition-all ${
                   activeMode === 'buy'
                     ? 'bg-festiva-burgundy text-white shadow-sm'
                     : 'text-stone-600 hover:text-festiva-burgundy'
@@ -170,14 +170,14 @@ export default function Navbar({
               </button>
               <button
                 onClick={() => setActiveMode('rent')}
-                className={`px-3 py-1.5 rounded-full transition-all flex items-center gap-1 ${
+                className={`px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full transition-all flex items-center gap-1 ${
                   activeMode === 'rent'
                     ? 'bg-festiva-burgundy text-white shadow-sm'
                     : 'text-stone-600 hover:text-festiva-burgundy'
                 }`}
               >
-                <Sparkles className="w-3 h-3 text-festiva-gold" />
-                <span>Rent Out</span>
+                <Sparkles className="w-2.5 h-2.5 sm:w-3 sm:h-3 text-festiva-gold" />
+                <span>Rent</span>
               </button>
             </div>
 

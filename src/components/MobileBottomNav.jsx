@@ -20,7 +20,7 @@ export default function MobileBottomNav({
   onOpenMyListings
 }) {
   return (
-    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-festiva-sand shadow-lg px-2 py-1.5 flex items-center justify-around text-[10px]">
+    <div className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-lg border-t border-festiva-sand shadow-lg px-1.5 py-1.5 pb-[max(0.5rem,env(safe-area-inset-bottom))] flex items-center justify-around text-[10px] select-none">
       
       {/* Home Button */}
       <button

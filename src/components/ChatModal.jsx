@@ -91,9 +91,9 @@ export default function ChatModal({
   const formatPKR = (num) => Number(num || 0).toLocaleString('en-PK');
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
       <div 
-        className="bg-white rounded-3xl max-w-lg w-full h-[620px] max-h-[90vh] shadow-2xl flex flex-col overflow-hidden border border-festiva-gold/30 animate-scaleUp"
+        className="bg-white rounded-t-[28px] sm:rounded-3xl max-w-lg w-full h-[85vh] sm:h-[620px] max-h-[92vh] shadow-2xl flex flex-col overflow-hidden border-t sm:border border-festiva-gold/30 animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Chat Header */}

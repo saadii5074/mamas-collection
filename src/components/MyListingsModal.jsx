@@ -62,20 +62,20 @@ export default function MyListingsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
+    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/70 backdrop-blur-sm animate-fadeIn">
       <div 
-        className="bg-white rounded-3xl max-w-3xl w-full max-h-[90vh] shadow-2xl flex flex-col overflow-hidden border border-festiva-gold/30 animate-scaleUp"
+        className="bg-white rounded-t-[28px] sm:rounded-3xl max-w-3xl w-full max-h-[92vh] sm:max-h-[90vh] shadow-2xl flex flex-col overflow-hidden border border-festiva-gold/30 animate-scaleUp"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="bg-gradient-to-r from-[#4A0B16] via-[#6B1222] to-[#4A0B16] text-white p-5 flex items-center justify-between border-b border-festiva-gold/30">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-2xl bg-festiva-gold/20 border border-festiva-gold/40 flex items-center justify-center text-festiva-gold shadow-sm font-serif font-bold text-xl">
+        <div className="bg-gradient-to-r from-[#4A0B16] via-[#6B1222] to-[#4A0B16] text-white p-4 sm:p-5 flex items-center justify-between border-b border-festiva-gold/30">
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-festiva-gold/20 border border-festiva-gold/40 flex items-center justify-center text-festiva-gold shadow-sm font-serif font-bold text-lg sm:text-xl">
               {activeUser.name.charAt(0)}
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-serif font-bold text-lg sm:text-xl text-white">
+                <h2 className="font-serif font-bold text-base sm:text-xl text-white truncate max-w-[200px] sm:max-w-none">
                   {activeUser.name} &bull; My Ads Studio
                 </h2>
                 <span className="flex items-center gap-1 text-[10px] bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-2 py-0.5 rounded-full font-bold">

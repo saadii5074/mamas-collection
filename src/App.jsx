@@ -474,7 +474,7 @@ export default function App() {
                 </div>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+              <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 sm:gap-6">
                 {filteredProducts.map((product) => (
                   <ProductCard
                     key={product.id}
@@ -692,16 +692,16 @@ export default function App() {
         onOpenMyListings={() => setIsMyListingsModalOpen(true)}
       />
 
-      {/* Floating WhatsApp Quick Action Bubble */}
+      {/* Floating WhatsApp Quick Action Bubble (Positioned gracefully above mobile bottom nav) */}
       <a
         href="https://wa.me/923070816990?text=Assalam%20o%20Alaikum%20Mamas%20Collection%20Quetta!"
         target="_blank"
         rel="noreferrer"
-        className="fixed bottom-6 right-6 z-40 w-14 h-14 bg-[#25D366] hover:bg-[#20ba59] active:scale-90 text-white rounded-full shadow-2xl flex items-center justify-center transform hover:scale-110 transition-all duration-300 border-2 border-white/30"
+        className="fixed bottom-20 right-3.5 sm:bottom-6 sm:right-6 z-40 w-12 h-12 sm:w-14 sm:h-14 bg-[#25D366] hover:bg-[#20ba59] active:scale-90 text-white rounded-full shadow-2xl flex items-center justify-center transform hover:scale-110 transition-all duration-300 border-2 border-white/40"
         title="Chat on WhatsApp"
         aria-label="Chat on WhatsApp"
       >
-        <WhatsAppIcon className="w-8 h-8 fill-white" />
+        <WhatsAppIcon className="w-6 h-6 sm:w-8 sm:h-8 fill-white" />
       </a>
 
     </div>
