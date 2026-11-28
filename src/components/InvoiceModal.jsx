@@ -241,8 +241,41 @@ export default function InvoiceModal({ order, onClose }) {
             </div>
           </div>
 
+          {/* Legal Digital Rental Contract & Agreement Clause (OLX / Amazon Trust) */}
+          <div className="bg-stone-50 border border-stone-300 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between border-b border-stone-200 pb-2">
+              <span className="font-serif font-bold text-stone-900 text-xs flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                <span>Legal Bridal Rental Agreement & Contract (قانونی معاہدہ برائے کرایہ)</span>
+              </span>
+              <span className="text-[10px] text-stone-500 font-mono">Governed under Quetta Jurisdiction</span>
+            </div>
+
+            <div className="text-[10px] text-stone-600 space-y-1.5 leading-relaxed">
+              <p><b>1. Condition & Inspection:</b> The renter acknowledges receiving the luxury dress/item in pristine dry-cleaned condition. Any tear, permanent stain, or embroidery loss may incur restoration costs deducted from the refundable security deposit.</p>
+              <p><b>2. Escrow Amanat Protection:</b> Payment remains held in Mamas Collection Escrow until the item is received and inspected by the recipient.</p>
+              <p><b>3. Timely Handover:</b> The dress must be returned to the vendor or Mamas Quetta Hub on or before the agreed return date.</p>
+            </div>
+
+            {/* Signature & CNIC Stamp Slots */}
+            <div className="grid grid-cols-2 gap-4 pt-3 border-t border-stone-200 text-[10px]">
+              <div>
+                <span className="block font-bold text-stone-700">Renter / Buyer Signature:</span>
+                <div className="h-10 border-b border-dashed border-stone-400 mt-1 flex items-end">
+                  <span className="text-stone-400 italic">{order.customer?.name} &bull; {order.customer?.phone}</span>
+                </div>
+              </div>
+              <div>
+                <span className="block font-bold text-stone-700">Vendor / Store Authorization:</span>
+                <div className="h-10 border-b border-dashed border-stone-400 mt-1 flex items-end">
+                  <span className="text-stone-400 italic">Mamas Collection Verified Officer</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Footer Seal */}
-          <div className="pt-6 border-t border-dashed border-stone-300 text-center text-[10px] text-stone-400">
+          <div className="pt-4 border-t border-dashed border-stone-300 text-center text-[10px] text-stone-400">
             <p>Thank you for choosing Mamas Collection &bull; Quetta's Premier Bridal & Rental Destination</p>
             <p className="mt-0.5">This is a system generated digital invoice and proof of rental contract.</p>
           </div>

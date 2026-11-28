@@ -1,54 +1,103 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
+  Sparkles, 
   MapPin, 
-  Star, 
   ShieldCheck, 
+  Star, 
+  Crown, 
   Clock, 
   Calendar, 
-  Sparkles, 
+  CheckCircle2, 
   Ruler, 
-  MessageCircle, 
+  Play, 
+  Video, 
+  MessageSquare, 
+  PhoneCall,
   ShoppingBag,
   Info,
-  CheckCircle2,
   Lock,
-  ArrowRight,
-  MessageSquare,
-  Video,
-  Play,
-  Eye,
-  Heart
+  Tag,
+  ThumbsUp,
+  AlertTriangle,
+  Camera,
+  Send
 } from 'lucide-react';
 import WhatsAppIcon from './WhatsAppIcon';
+import { 
+  getReviews, 
+  addReview, 
+  checkDateConflict, 
+  sanitizeInput 
+} from '../services/marketplaceService';
 
-export default function ProductDetailModal({ 
-  product, 
-  onClose, 
+export default function ProductDetailModal({
+  isOpen,
+  onClose,
+  product,
+  initialMode = 'rent',
+  activeUser,
   onAddToCart,
-  initialBookingType = 'rent',
-  onOpenChatWithProduct
+  onOpenChatWithProduct,
+  onOpenMakeOffer
 }) {
-  if (!product) return null;
+  if (!isOpen || !product) return null;
 
   const [showVideo, setShowVideo] = useState(false);
   const isRental = product.listingType === 'rent';
   const isBuy = product.listingType === 'buy';
 
   const [bookingMode, setBookingMode] = useState(
-    product.listingType === 'buy' ? 'buy' : 'rent'
+    product.listingType === 'buy' ? 'buy' : initialMode
   );
   const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [selectedSize, setSelectedSize] = useState(product.sizes?.[0] || 'Standard');
   
-  // Rental Calculation State
+  // Interactive Rental Calendar Date Picker State
   const [rentalUnit, setRentalUnit] = useState('daily'); // 'hourly', 'daily', 'monthly'
-  const [rentalDuration, setRentalDuration] = useState(1);
   const [startDate, setStartDate] = useState(() => {
     const tomorrow = new Date();
     tomorrow.setDate(tomorrow.getDate() + 1);
     return tomorrow.toISOString().split('T')[0];
   });
+  const [endDate, setEndDate] = useState(() => {
+    const future = new Date();
+    future.setDate(future.getDate() + 3);
+    return future.toISOString().split('T')[0];
+  });
+  const [rentalDuration, setRentalDuration] = useState(2);
+  const [dateConflict, setDateConflict] = useState({ hasConflict: false });
+
+  // Tab State: Specs vs Reviews
+  const [activeTab, setActiveTab] = useState('specs'); // 'specs', 'reviews'
+  const [reviews, setReviews] = useState(() => getReviews(product.id));
+
+  // Review submission state
+  const [isWritingReview, setIsWritingReview] = useState(false);
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewEvent, setReviewEvent] = useState('Barat');
+  const [reviewFitting, setReviewFitting] = useState('Perfect Fit');
+  const [reviewPhoto, setReviewPhoto] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState(false);
+
+  // Recalculate duration and conflict when dates change
+  useEffect(() => {
+    if (bookingMode === 'rent' && startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+      const diffTime = end.getTime() - start.getTime();
+      const diffDays = Math.max(1, Math.ceil(diffTime / (1000 * 60 * 60 * 24)));
+      setRentalDuration(diffDays);
+
+      const conflict = checkDateConflict(product.id, startDate, endDate);
+      setDateConflict(conflict);
+    }
+  }, [startDate, endDate, bookingMode, product.id]);
+
+  useEffect(() => {
+    setReviews(getReviews(product.id));
+  }, [product.id]);
 
   const formatPKR = (num) => Number(num || 0).toLocaleString('en-PK');
 
@@ -74,8 +123,7 @@ export default function ProductDetailModal({
     text += `Event: ${product.eventType.toUpperCase()}\n`;
     text += `Size Selected: ${selectedSize}\n`;
     if (bookingMode === 'rent') {
-      text += `Booking Type: Rental (${rentalDuration} ${rentalUnit})\n`;
-      text += `Start Date: ${startDate}\n`;
+      text += `Booking Type: Rental (${rentalDuration} days from ${startDate} to ${endDate})\n`;
       text += `Rent Amount: Rs. ${formatPKR(rentalTotal)}\n`;
       text += `Refundable Security Deposit: Rs. ${formatPKR(product.securityDeposit)}\n`;
       text += `Grand Total: Rs. ${formatPKR(grandTotal)}\n`;
@@ -89,6 +137,11 @@ export default function ProductDetailModal({
   };
 
   const handleConfirmAction = () => {
+    if (dateConflict.hasConflict) {
+      alert(dateConflict.message);
+      return;
+    }
+
     const bookingDetails = {
       product,
       bookingMode,
@@ -96,6 +149,7 @@ export default function ProductDetailModal({
       rentalUnit: bookingMode === 'rent' ? rentalUnit : null,
       rentalDuration: bookingMode === 'rent' ? rentalDuration : null,
       startDate: bookingMode === 'rent' ? startDate : null,
+      endDate: bookingMode === 'rent' ? endDate : null,
       rentAmount: bookingMode === 'rent' ? rentalTotal : null,
       securityDeposit: bookingMode === 'rent' ? product.securityDeposit : 0,
       totalPrice: grandTotal
@@ -104,8 +158,34 @@ export default function ProductDetailModal({
     onClose();
   };
 
+  const handleReviewSubmit = (e) => {
+    e.preventDefault();
+    if (!reviewComment.trim()) return;
+
+    const newRev = {
+      productId: product.id,
+      authorName: activeUser?.name || 'Customer from Quetta',
+      authorCity: activeUser?.area || `${product.quettaArea}`,
+      rating: reviewRating,
+      event: reviewEvent,
+      fitting: reviewFitting,
+      comment: sanitizeInput(reviewComment),
+      photo: reviewPhoto || null
+    };
+
+    const updated = addReview(newRev);
+    setReviews(updated.filter(r => r.productId === product.id));
+    setReviewSuccess(true);
+    setReviewComment('');
+    setReviewPhoto('');
+    setTimeout(() => {
+      setIsWritingReview(false);
+      setReviewSuccess(false);
+    }, 2000);
+  };
+
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/70 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/75 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 animate-in fade-in duration-200">
       <div 
         className="bg-white rounded-t-[28px] sm:rounded-3xl max-w-4xl w-full overflow-hidden shadow-2xl border-t sm:border border-festiva-sand max-h-[92vh] flex flex-col"
         onClick={(e) => e.stopPropagation()}
@@ -132,7 +212,7 @@ export default function ProductDetailModal({
         <div className="overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 pb-12 sm:pb-6">
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
             
-            {/* Left Column: Image Gallery & Video Showcase */}
+            {/* Left Column: Image Gallery, Video Showcase & Tabs */}
             <div className="md:col-span-6 space-y-3">
               <div className="relative aspect-[3/4] rounded-2xl overflow-hidden bg-stone-100 border border-festiva-sand shadow-inner">
                 {showVideo && product.video ? (
@@ -146,10 +226,9 @@ export default function ProductDetailModal({
                     <button
                       type="button"
                       onClick={() => setShowVideo(false)}
-                      className="absolute top-3 right-3 bg-black/70 hover:bg-black text-white text-xs px-2.5 py-1 rounded-full z-10 flex items-center gap-1 shadow"
+                      className="absolute top-3 right-3 bg-white/80 hover:bg-white text-stone-800 p-1.5 rounded-full shadow-md z-10 transition-colors"
                     >
-                      <X className="w-3.5 h-3.5" />
-                      <span>Back to Photos</span>
+                      <X className="w-4 h-4" />
                     </button>
                   </div>
                 ) : (
@@ -157,15 +236,15 @@ export default function ProductDetailModal({
                     <img
                       src={product.images[activeImageIndex] || product.images[0]}
                       alt={product.title}
-                      className="w-full h-full object-cover object-top"
+                      className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
                     />
 
-                    {/* Badges on main image */}
+                    {/* Badge Overlays */}
                     <div className="absolute top-3 left-3 flex flex-col gap-1.5">
                       {product.isOfficial ? (
-                        <span className="bg-festiva-maroon text-festiva-lightgold font-bold text-xs px-3 py-1 rounded-full shadow-md flex items-center gap-1 border border-festiva-gold/40">
-                          <Sparkles className="w-3 h-3 text-festiva-gold" />
-                          <span>Mamas Collection Official</span>
+                        <span className="bg-festiva-maroon text-festiva-lightgold font-serif font-bold text-xs px-3 py-1 rounded-full shadow-md border border-festiva-gold/40 flex items-center gap-1">
+                          <Crown className="w-3.5 h-3.5 text-festiva-gold" />
+                          <span>Official Mamas Collection</span>
                         </span>
                       ) : (
                         <span className="bg-stone-900/90 text-white font-semibold text-xs px-3 py-1 rounded-full shadow-md flex items-center gap-1">
@@ -229,9 +308,36 @@ export default function ProductDetailModal({
                 )}
               </div>
 
-              {/* Stitched Measurements Card */}
-              {product.measurements && (
-                <div className="bg-[#FAF5F3] p-4 rounded-2xl border border-festiva-sand">
+              {/* Detail Tabs Selector: Specs vs Customer Reviews */}
+              <div className="flex border-b border-stone-200 pt-2 gap-2 text-xs font-bold">
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('specs')}
+                  className={`pb-2 px-3 border-b-2 transition-all ${
+                    activeTab === 'specs'
+                      ? 'border-festiva-burgundy text-festiva-burgundy'
+                      : 'border-transparent text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  Specs & Measurements
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setActiveTab('reviews')}
+                  className={`pb-2 px-3 border-b-2 transition-all flex items-center gap-1 ${
+                    activeTab === 'reviews'
+                      ? 'border-festiva-burgundy text-festiva-burgundy'
+                      : 'border-transparent text-stone-500 hover:text-stone-800'
+                  }`}
+                >
+                  <Star className="w-3.5 h-3.5 fill-festiva-gold text-festiva-gold" />
+                  <span>Customer Reviews ({reviews.length})</span>
+                </button>
+              </div>
+
+              {/* TAB CONTENT: SPECS & MEASUREMENTS */}
+              {activeTab === 'specs' && product.measurements && (
+                <div className="bg-[#FAF5F3] p-4 rounded-2xl border border-festiva-sand space-y-2">
                   <div className="flex items-center gap-1.5 font-bold text-xs text-festiva-maroon mb-2">
                     <Ruler className="w-4 h-4 text-festiva-gold" />
                     <span>Exact Stitched Measurements (انچ میں ناپ):</span>
@@ -260,103 +366,181 @@ export default function ProductDetailModal({
                   </p>
                 </div>
               )}
-            </div>
 
-            {/* Right Column: Title, Vendor, Pricing & Booking Engine */}
-            <div className="md:col-span-6 space-y-4">
-              
-              <div>
-                <div className="flex items-center justify-between text-xs text-stone-500 mb-1">
-                  <div className="flex items-center gap-1 text-amber-500 font-semibold">
-                    <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    <span>{product.rating}</span>
-                    <span className="text-stone-400 font-normal">({product.reviewsCount} reviews)</span>
+              {/* TAB CONTENT: REAL CUSTOMER REVIEWS */}
+              {activeTab === 'reviews' && (
+                <div className="bg-[#FAF5F3] p-4 rounded-2xl border border-festiva-sand space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
+                      <span className="font-bold text-xs text-stone-900">
+                        {product.rating || '5.0'} / 5.0 Rating
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => setIsWritingReview(!isWritingReview)}
+                      className="text-xs font-bold text-festiva-burgundy hover:underline"
+                    >
+                      {isWritingReview ? 'Cancel' : '+ Write a Review'}
+                    </button>
                   </div>
-                  <span className="text-stone-600 font-medium bg-stone-100 px-2 py-0.5 rounded">
-                    Condition: {product.condition}
-                  </span>
-                </div>
 
-                <h2 className="font-serif font-bold text-xl sm:text-2xl text-stone-900 leading-snug">
-                  {product.title}
-                </h2>
-                <p className="font-urdu text-sm text-festiva-burgundy mt-1 font-semibold">
-                  {product.titleUrdu}
-                </p>
-
-                {/* Host Info */}
-                <div className="flex items-center gap-2 mt-3 p-2.5 rounded-xl bg-festiva-blush/60 border border-festiva-sand text-xs">
-                  <div className="w-8 h-8 rounded-full bg-festiva-burgundy text-white flex items-center justify-center font-bold text-xs">
-                    {product.vendor.name.charAt(0)}
-                  </div>
-                  <div className="flex-1">
-                    <p className="font-bold text-stone-800 flex items-center gap-1">
-                      <span>{product.vendor.name}</span>
-                      {product.vendor.verified && (
-                        <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  {/* Review Submission Form */}
+                  {isWritingReview && (
+                    <form onSubmit={handleReviewSubmit} className="bg-white p-3.5 rounded-xl border border-stone-200 space-y-2.5">
+                      {reviewSuccess && (
+                        <div className="p-2 bg-emerald-50 text-emerald-800 text-xs rounded-lg font-bold">
+                          ✓ Review Submitted Successfully!
+                        </div>
                       )}
-                    </p>
-                    <p className="text-[11px] text-stone-500">
-                      Located in {product.quettaArea}, Quetta
-                    </p>
-                  </div>
-                </div>
 
-                {/* Live Engagement Stats (Views & Saves) */}
-                <div className="flex items-center gap-2.5 text-xs text-stone-500 py-2 border-y border-stone-100 my-2">
-                  <span className="flex items-center gap-1.5 text-blue-700 font-bold bg-blue-50 px-2.5 py-0.5 rounded-full">
-                    <Eye className="w-3.5 h-3.5 text-blue-600" />
-                    <span>{product.viewsCount || 192} Views</span>
-                  </span>
-                  <span className="flex items-center gap-1.5 text-rose-700 font-bold bg-rose-50 px-2.5 py-0.5 rounded-full">
-                    <Heart className="w-3.5 h-3.5 text-rose-600 fill-rose-100" />
-                    <span>{product.likesCount || 26} Saves</span>
-                  </span>
-                  <span className="text-[11px] text-emerald-700 font-bold ml-auto flex items-center gap-1">
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Mamas Escrow Safe</span>
-                  </span>
-                </div>
-              </div>
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-600 mb-1">Star Rating:</label>
+                        <div className="flex items-center gap-1">
+                          {[1, 2, 3, 4, 5].map((s) => (
+                            <Star
+                              key={s}
+                              onClick={() => setReviewRating(s)}
+                              className={`w-5 h-5 cursor-pointer transition-transform hover:scale-110 ${
+                                s <= reviewRating ? 'fill-amber-400 text-amber-400' : 'text-stone-300'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </div>
 
-              {/* Description */}
-              <p className="text-xs text-stone-600 leading-relaxed">
-                {product.description}
-              </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-600 mb-0.5">Event:</label>
+                          <select
+                            value={reviewEvent}
+                            onChange={(e) => setReviewEvent(e.target.value)}
+                            className="w-full text-xs border border-stone-200 rounded-lg p-1.5 outline-none"
+                          >
+                            <option value="Barat">Barat</option>
+                            <option value="Valima">Valima</option>
+                            <option value="Mehndi">Mehndi</option>
+                            <option value="Party">Party</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-stone-600 mb-0.5">Fitting:</label>
+                          <select
+                            value={reviewFitting}
+                            onChange={(e) => setReviewFitting(e.target.value)}
+                            className="w-full text-xs border border-stone-200 rounded-lg p-1.5 outline-none"
+                          >
+                            <option value="Perfect Fit">Perfect Fit</option>
+                            <option value="True to Size">True to Size</option>
+                            <option value="Slightly Tight">Slightly Tight</option>
+                            <option value="Loose / Altered">Loose / Altered</option>
+                          </select>
+                        </div>
+                      </div>
 
-              {/* Size Selector */}
-              {product.sizes && (
-                <div>
-                  <label className="block text-xs font-bold text-stone-700 mb-1.5">
-                    Select Available Size:
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {product.sizes.map((s) => (
+                      <div>
+                        <label className="block text-[10px] font-bold text-stone-600 mb-0.5">Your Feedback:</label>
+                        <textarea
+                          rows="2"
+                          placeholder="Shadi par kaisa laga? Fabric, quality, aur fitting kaisa tha?"
+                          value={reviewComment}
+                          onChange={(e) => setReviewComment(e.target.value)}
+                          className="w-full text-xs border border-stone-200 rounded-lg p-2 outline-none"
+                          required
+                        />
+                      </div>
+
                       <button
-                        key={s}
-                        onClick={() => setSelectedSize(s)}
-                        className={`px-3 py-1.5 rounded-xl text-xs font-semibold border transition-all ${
-                          selectedSize === s
-                            ? 'bg-festiva-burgundy text-white border-festiva-burgundy shadow-sm'
-                            : 'bg-white text-stone-700 border-stone-200 hover:border-festiva-burgundy'
-                        }`}
+                        type="submit"
+                        className="w-full bg-festiva-burgundy text-white font-bold py-1.5 rounded-lg text-xs"
                       >
-                        {s}
+                        Submit Verified Review
                       </button>
+                    </form>
+                  )}
+
+                  {/* Reviews List */}
+                  <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+                    {reviews.map((r) => (
+                      <div key={r.id} className="bg-white p-3 rounded-xl border border-stone-200 space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-1.5 font-bold text-stone-900">
+                            <span>{r.authorName}</span>
+                            <span className="text-[10px] bg-emerald-50 text-emerald-700 px-1.5 py-0.2 rounded font-semibold border border-emerald-200">
+                              ✓ Verified
+                            </span>
+                          </div>
+                          <div className="flex items-center text-amber-500">
+                            {[...Array(r.rating || 5)].map((_, i) => (
+                              <Star key={i} className="w-3 h-3 fill-amber-400 text-amber-400" />
+                            ))}
+                          </div>
+                        </div>
+
+                        <p className="text-stone-700 text-[11px] leading-relaxed">
+                          "{r.comment}"
+                        </p>
+
+                        <div className="flex items-center justify-between text-[10px] text-stone-400 pt-1 border-t border-stone-100">
+                          <span>{r.authorCity} &bull; {r.event}</span>
+                          <span className="text-emerald-700 font-semibold">{r.fitting}</span>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Strict Purpose Banner: Rent vs Buy */}
-              <div 
-                className="p-2.5 rounded-xl border text-xs font-bold flex items-center justify-between"
-                style={{
-                  backgroundColor: isRental ? '#FFFBEB' : '#ECFDF5',
-                  borderColor: isRental ? '#FDE68A' : '#A7F3D0',
-                  color: isRental ? '#92400E' : '#065F46'
-                }}
-              >
+            </div>
+
+            {/* Right Column: Pricing, Dates Calendar, Bargain & Actions */}
+            <div className="md:col-span-6 space-y-4">
+              
+              <div>
+                <h1 className="font-serif font-bold text-xl sm:text-2xl text-stone-900 leading-tight">
+                  {product.title}
+                </h1>
+                {product.titleUrdu && (
+                  <p className="text-sm font-serif text-festiva-burgundy mt-1 font-semibold">
+                    {product.titleUrdu}
+                  </p>
+                )}
+                
+                <div className="flex items-center gap-2 mt-2 text-xs text-stone-600">
+                  <div className="flex items-center gap-1 text-festiva-gold font-bold">
+                    <Star className="w-4 h-4 fill-festiva-gold text-festiva-gold" />
+                    <span>{product.rating}</span>
+                  </div>
+                  <span>&bull;</span>
+                  <span>{reviews.length} Verified Reviews</span>
+                  <span>&bull;</span>
+                  <span className="text-stone-400">Condition: <b>{product.condition || 'Pre-loved'}</b></span>
+                </div>
+              </div>
+
+              {/* Vendor / Seller Box */}
+              <div className="bg-festiva-blush/60 p-3 rounded-2xl border border-festiva-sand flex items-center justify-between">
+                <div>
+                  <span className="text-[10px] text-stone-400 block uppercase font-bold">Item Hosted By:</span>
+                  <span className="font-serif font-bold text-festiva-maroon text-sm">
+                    {product.vendor.name}
+                  </span>
+                  <p className="text-[11px] text-stone-500">
+                    Location: {product.quettaArea}, Quetta
+                  </p>
+                </div>
+                {product.vendor.verified && (
+                  <span className="text-emerald-700 font-semibold text-xs flex items-center gap-1 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    <span>Verified</span>
+                  </span>
+                )}
+              </div>
+
+              {/* Single Mode Notice (Only Rent vs Only Buy) */}
+              <div className="flex items-center justify-between p-2.5 rounded-xl bg-festiva-blush/40 border border-festiva-sand text-xs font-bold text-stone-800">
                 <span className="flex items-center gap-1.5">
                   <Sparkles className="w-4 h-4 text-festiva-gold" />
                   <span>
@@ -371,96 +555,62 @@ export default function ProductDetailModal({
                 </span>
               </div>
 
-              {/* RENTAL ENGINE CALCULATOR */}
+              {/* RENTAL ENGINE & INTERACTIVE CALENDAR */}
               {bookingMode === 'rent' && product.rentRate && (
                 <div className="bg-gradient-to-br from-[#FAF5F3] to-[#FFF8EE] p-4 rounded-2xl border border-festiva-sand space-y-3">
                   <div className="flex items-center justify-between">
                     <span className="text-xs font-bold text-festiva-maroon flex items-center gap-1">
-                      <Clock className="w-3.5 h-3.5 text-festiva-gold" />
-                      <span>Rental Duration & Rates Calculator</span>
+                      <Calendar className="w-3.5 h-3.5 text-festiva-gold" />
+                      <span>Live Rental Calendar Booking</span>
                     </span>
                     <span className="text-[10px] text-stone-500">
-                      Original: Rs. {formatPKR(product.originalPrice)}
+                      Rate: Rs. {formatPKR(product.rentRate.daily)} / day
                     </span>
                   </div>
 
-                  {/* Units Selector (Daily / Hourly / Monthly) */}
-                  <div className="grid grid-cols-3 gap-1.5 text-xs">
-                    <button
-                      onClick={() => { setRentalUnit('daily'); setRentalDuration(1); }}
-                      className={`p-2 rounded-xl text-center border font-bold transition-all ${
-                        rentalUnit === 'daily'
-                          ? 'bg-festiva-burgundy text-white border-festiva-burgundy'
-                          : 'bg-white text-stone-700 border-stone-200 hover:border-festiva-burgundy'
-                      }`}
-                    >
-                      <span className="block text-[10px] text-stone-300 font-normal">Daily</span>
-                      Rs. {formatPKR(product.rentRate.daily)}
-                    </button>
+                  {/* Date Conflict Alert Banner */}
+                  {dateConflict.hasConflict && (
+                    <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs font-bold flex items-center gap-2 animate-shake">
+                      <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      <span>{dateConflict.message}</span>
+                    </div>
+                  )}
 
-                    <button
-                      onClick={() => { setRentalUnit('hourly'); setRentalDuration(4); }}
-                      className={`p-2 rounded-xl text-center border font-bold transition-all ${
-                        rentalUnit === 'hourly'
-                          ? 'bg-festiva-burgundy text-white border-festiva-burgundy'
-                          : 'bg-white text-stone-700 border-stone-200 hover:border-festiva-burgundy'
-                      }`}
-                    >
-                      <span className="block text-[10px] text-stone-300 font-normal">Hourly</span>
-                      Rs. {formatPKR(product.rentRate.hourly)}
-                    </button>
-
-                    <button
-                      onClick={() => { setRentalUnit('monthly'); setRentalDuration(1); }}
-                      className={`p-2 rounded-xl text-center border font-bold transition-all ${
-                        rentalUnit === 'monthly'
-                          ? 'bg-festiva-burgundy text-white border-festiva-burgundy'
-                          : 'bg-white text-stone-700 border-stone-200 hover:border-festiva-burgundy'
-                      }`}
-                    >
-                      <span className="block text-[10px] text-stone-300 font-normal">Monthly</span>
-                      Rs. {formatPKR(product.rentRate.monthly)}
-                    </button>
-                  </div>
-
-                  {/* Duration Counter & Date */}
+                  {/* Interactive Date Range Picker */}
                   <div className="grid grid-cols-2 gap-3 pt-1">
                     <div>
-                      <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                        Duration ({rentalUnit === 'daily' ? 'Days' : rentalUnit === 'hourly' ? 'Hours' : 'Months'}):
+                      <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                        Event Start Date:
                       </label>
-                      <div className="flex items-center bg-white rounded-xl border border-stone-200 overflow-hidden">
-                        <button
-                          onClick={() => setRentalDuration(Math.max(1, rentalDuration - 1))}
-                          className="px-3 py-1.5 text-stone-600 hover:bg-stone-100 font-bold"
-                        >
-                          -
-                        </button>
-                        <span className="flex-1 text-center font-bold text-xs text-stone-900">
-                          {rentalDuration}
-                        </span>
-                        <button
-                          onClick={() => setRentalDuration(rentalDuration + 1)}
-                          className="px-3 py-1.5 text-stone-600 hover:bg-stone-100 font-bold"
-                        >
-                          +
-                        </button>
-                      </div>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-stone-800 outline-none focus:border-festiva-burgundy"
+                      />
                     </div>
 
                     <div>
-                      <label className="block text-[11px] font-semibold text-stone-600 mb-1">
-                        Event / Start Date:
+                      <label className="block text-[11px] font-bold text-stone-700 mb-1">
+                        Return Date:
                       </label>
-                      <div className="relative">
-                        <input
-                          type="date"
-                          value={startDate}
-                          onChange={(e) => setStartDate(e.target.value)}
-                          className="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-stone-800 outline-none focus:border-festiva-burgundy"
-                        />
-                      </div>
+                      <input
+                        type="date"
+                        value={endDate}
+                        min={startDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        className="w-full bg-white border border-stone-200 rounded-xl px-2.5 py-1.5 text-xs font-medium text-stone-800 outline-none focus:border-festiva-burgundy"
+                      />
                     </div>
+                  </div>
+
+                  <div className="flex items-center justify-between text-xs bg-white/70 p-2 rounded-xl border border-stone-200">
+                    <span className="text-stone-600 font-medium">
+                      Calculated Rental Period:
+                    </span>
+                    <span className="font-bold text-festiva-burgundy">
+                      {rentalDuration} Day(s) &bull; Rs. {formatPKR(rentalTotal)}
+                    </span>
                   </div>
 
                   {/* Amanat Locker Security Deposit Notice */}
@@ -483,7 +633,7 @@ export default function ProductDetailModal({
               {/* Price Summary Breakdown */}
               <div className="bg-stone-50 p-3.5 rounded-2xl border border-stone-200 space-y-2">
                 <div className="flex justify-between text-xs text-stone-600">
-                  <span>{bookingMode === 'rent' ? `Rental Fee (${rentalDuration} ${rentalUnit})` : 'Purchase Price'}:</span>
+                  <span>{bookingMode === 'rent' ? `Rental Fee (${rentalDuration} Days)` : 'Purchase Price'}:</span>
                   <span className="font-semibold text-stone-900">
                     Rs. {formatPKR(bookingMode === 'rent' ? rentalTotal : product.price)}
                   </span>
@@ -506,11 +656,14 @@ export default function ProductDetailModal({
                 </div>
               </div>
 
-              {/* Action Buttons */}
+              {/* Action Buttons: Book Now, Make an Offer, Chat */}
               <div className="space-y-2 pt-1">
+                
+                {/* Book / Checkout Button */}
                 <button
                   onClick={handleConfirmAction}
-                  className="w-full bg-gradient-to-r from-festiva-burgundy via-festiva-maroon to-festiva-burgundy hover:brightness-110 text-white font-bold py-3 px-4 rounded-2xl shadow-festive transition-all flex items-center justify-center gap-2 transform active:scale-[0.99]"
+                  disabled={dateConflict.hasConflict}
+                  className="w-full bg-gradient-to-r from-festiva-burgundy via-festiva-maroon to-festiva-burgundy hover:brightness-110 text-white font-bold py-3 px-4 rounded-2xl shadow-festive transition-all flex items-center justify-center gap-2 transform active:scale-[0.99] disabled:opacity-50"
                 >
                   <ShoppingBag className="w-4 h-4 text-festiva-gold" />
                   <span>
@@ -518,7 +671,23 @@ export default function ProductDetailModal({
                   </span>
                 </button>
 
+                {/* Second Row: Make an Offer (OLX Bargaining) & Chat with Seller */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  
+                  {/* Make an Offer Button */}
+                  <button
+                    onClick={() => {
+                      if (onOpenMakeOffer) {
+                        onOpenMakeOffer(product);
+                      }
+                    }}
+                    className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold py-2.5 px-3 rounded-2xl transition-all flex items-center justify-center gap-1.5 text-xs shadow-md border border-amber-400 active:scale-95"
+                  >
+                    <Tag className="w-4 h-4 text-white" />
+                    <span>Make an Offer (قیمت طے کریں)</span>
+                  </button>
+
+                  {/* Chat With Seller Button */}
                   <button
                     onClick={() => {
                       if (onOpenChatWithProduct) {
@@ -526,24 +695,25 @@ export default function ProductDetailModal({
                         onClose();
                       }
                     }}
-                    className={`w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 px-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-xs shadow-md border border-festiva-gold/30 hover:border-festiva-gold group ${
-                      !product.isOfficial ? 'sm:col-span-2' : ''
-                    }`}
+                    className="w-full bg-stone-900 hover:bg-stone-800 text-white font-bold py-2.5 px-3 rounded-2xl transition-all flex items-center justify-center gap-1.5 text-xs shadow-md border border-festiva-gold/30 hover:border-festiva-gold group"
                   >
                     <MessageSquare className="w-4 h-4 text-festiva-lightgold group-hover:scale-110 transition-transform" />
-                    <span>Chat with Seller (اندرون ایپ چیٹ - Safe & Monitored)</span>
+                    <span>In-App Chat (محفوظ چیٹ)</span>
                   </button>
 
-                  {product.isOfficial && (
-                    <button
-                      onClick={handleWhatsAppInquiry}
-                      className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-2.5 px-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-xs shadow-md"
-                    >
-                      <WhatsAppIcon className="w-4 h-4 fill-white" />
-                      <span>Official WhatsApp: 0307-0816990</span>
-                    </button>
-                  )}
                 </div>
+
+                {/* Official WhatsApp Button if Official Store */}
+                {product.isOfficial && (
+                  <button
+                    onClick={handleWhatsAppInquiry}
+                    className="w-full bg-[#25D366] hover:bg-[#1EBE5D] text-white font-bold py-2.5 px-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-xs shadow-md"
+                  >
+                    <WhatsAppIcon className="w-4 h-4 fill-white" />
+                    <span>Official WhatsApp Inquiry: 0307-0816990</span>
+                  </button>
+                )}
+
               </div>
 
             </div>

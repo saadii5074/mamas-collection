@@ -34,7 +34,8 @@ export default function Navbar({
   activeUser,
   onOpenMyListings,
   onOpenAuth,
-  onSwitchRole
+  onSwitchRole,
+  onOpenProfileManager
 }) {
   return (
     <header className="sticky top-0 z-40 bg-white/95 backdrop-blur-md border-b border-festiva-sand shadow-sm transition-all">
@@ -54,15 +55,15 @@ export default function Navbar({
           </div>
 
           <div className="flex items-center gap-2.5 sm:gap-4 text-[10px] sm:text-[11px] flex-shrink-0">
-            {/* Simulation Role Switcher */}
+            {/* Multi-Account Profile Switcher */}
             {activeUser && (
               <button
-                onClick={onSwitchRole}
-                className="hidden md:flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[10px] text-festiva-lightgold font-mono transition-all border border-white/20"
-                title="Switch demo account to test buyer vs seller communication"
+                onClick={onOpenProfileManager || onSwitchRole}
+                className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 px-2 py-0.5 rounded text-[10px] text-festiva-lightgold font-mono transition-all border border-white/20"
+                title="Switch Profile / Create New Custom Account"
               >
-                <RefreshCw className="w-3 h-3 text-festiva-gold" />
-                <span>Demo: <b>{activeUser.name}</b> ({activeUser.role === 'seller' ? 'Seller' : 'Buyer'})</span>
+                <img src={activeUser.avatar} alt="" className="w-3.5 h-3.5 rounded-full object-cover border border-festiva-gold/50" />
+                <span className="truncate max-w-[120px]"><b>{activeUser.name.split(' ')[0]}</b> ({activeUser.role === 'seller' ? 'Seller' : 'Buyer'})</span>
                 <span className="underline ml-0.5 text-white">Switch</span>
               </button>
             )}
@@ -202,7 +203,7 @@ export default function Navbar({
 
             {/* User Account / Phone Auth */}
             <button
-              onClick={onOpenAuth}
+              onClick={activeUser ? onOpenProfileManager : onOpenAuth}
               className="flex items-center gap-1.5 bg-festiva-blush hover:bg-festiva-sand text-stone-800 px-3 py-1.5 rounded-full text-xs font-semibold border border-festiva-sand transition-all"
               title={activeUser ? `Signed in as ${activeUser.name} (${activeUser.phone})` : "Login / Register with Phone"}
             >

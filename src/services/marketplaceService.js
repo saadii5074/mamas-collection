@@ -100,6 +100,35 @@ export const DEFAULT_USERS = [
   }
 ];
 
+// Helper to get all registered user profiles
+export function getAllUserProfiles() {
+  const saved = localStorage.getItem('mamas_user_profiles');
+  if (saved) {
+    try {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      // fallback
+    }
+  }
+  localStorage.setItem('mamas_user_profiles', JSON.stringify(DEFAULT_USERS));
+  return DEFAULT_USERS;
+}
+
+export function saveUserProfile(user) {
+  const profiles = getAllUserProfiles();
+  const index = profiles.findIndex(u => u.id === user.id);
+  let updated;
+  if (index >= 0) {
+    updated = [...profiles];
+    updated[index] = user;
+  } else {
+    updated = [...profiles, user];
+  }
+  localStorage.setItem('mamas_user_profiles', JSON.stringify(updated));
+  return updated;
+}
+
 // Helper to get active user
 export function getActiveUser() {
   const saved = localStorage.getItem('mamas_active_user');
@@ -110,7 +139,8 @@ export function getActiveUser() {
       // fallback
     }
   }
-  return DEFAULT_USERS[0]; // Zarghoon Boutique by default
+  const all = getAllUserProfiles();
+  return all[0] || DEFAULT_USERS[0];
 }
 
 export function setActiveUser(user) {
@@ -333,4 +363,297 @@ export function verifyCartPriceIntegrity(cartItems, catalogProducts) {
     verifiedItems,
     hasTampering
   };
+}
+
+// ==========================================
+// 9. OLX "Make an Offer" Bargaining Engine
+// ==========================================
+export function getOffers() {
+  const saved = localStorage.getItem('mamas_offers');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      // fallback
+    }
+  }
+  // Initial demo offer to test right away
+  const initialOffers = [
+    {
+      id: 'offer_101',
+      productId: 'mc-001',
+      productTitle: 'Royal Maroon Velvet Bridal Lehenga',
+      productImage: 'https://images.unsplash.com/photo-1594744803329-e58b31de8bf5?q=80&w=600',
+      sellerPhone: '0307-8899112',
+      sellerName: 'Zarghoon Bridal Lounge',
+      buyerId: 'user_fatima',
+      buyerName: 'Fatima Baloch (Buyer)',
+      buyerPhone: '0307-5544332',
+      originalPrice: 15000,
+      offeredPrice: 12500,
+      offerType: 'rent',
+      note: 'Assalam o Alaikum! I need this for Barat event on Dec 15. Can you please accept Rs. 12,500 daily rent?',
+      status: 'pending', // 'pending', 'accepted', 'rejected', 'countered'
+      counterPrice: null,
+      createdAt: new Date(Date.now() - 3600000 * 2).toISOString()
+    }
+  ];
+  localStorage.setItem('mamas_offers', JSON.stringify(initialOffers));
+  return initialOffers;
+}
+
+export function saveOffers(offers) {
+  localStorage.setItem('mamas_offers', JSON.stringify(offers));
+}
+
+export function createOffer(offerData) {
+  const offers = getOffers();
+  const newOffer = {
+    id: `offer_${Date.now()}`,
+    status: 'pending',
+    createdAt: new Date().toISOString(),
+    ...offerData
+  };
+  const updated = [newOffer, ...offers];
+  saveOffers(updated);
+  return newOffer;
+}
+
+export function updateOfferStatus(offerId, status, counterPrice = null) {
+  const offers = getOffers();
+  const updated = offers.map(o => {
+    if (o.id === offerId) {
+      return {
+        ...o,
+        status,
+        counterPrice: counterPrice ? Number(counterPrice) : o.counterPrice,
+        updatedAt: new Date().toISOString()
+      };
+    }
+    return o;
+  });
+  saveOffers(updated);
+  return updated;
+}
+
+// ==========================================
+// 10. Amazon-Style Rental Booking Calendar
+// ==========================================
+export function getBookings() {
+  const saved = localStorage.getItem('mamas_bookings');
+  if (saved) {
+    try {
+      return JSON.parse(saved);
+    } catch (e) {
+      // fallback
+    }
+  }
+  // Demo reserved booking dates
+  const initialBookings = [
+    {
+      id: 'book_01',
+      productId: 'mc-001',
+      startDate: '2026-12-18',
+      endDate: '2026-12-21',
+      customerName: 'Ayesha Khan',
+      status: 'confirmed'
+    }
+  ];
+  localStorage.setItem('mamas_bookings', JSON.stringify(initialBookings));
+  return initialBookings;
+}
+
+export function saveBookings(bookings) {
+  localStorage.setItem('mamas_bookings', JSON.stringify(bookings));
+}
+
+export function addBooking(bookingData) {
+  const bookings = getBookings();
+  const newBooking = {
+    id: `book_${Date.now()}`,
+    status: 'confirmed',
+    createdAt: new Date().toISOString(),
+    ...bookingData
+  };
+  const updated = [...bookings, newBooking];
+  saveBookings(updated);
+  return newBooking;
+}
+
+export function checkDateConflict(productId, startDateStr, endDateStr) {
+  if (!productId || !startDateStr || !endDateStr) return { hasConflict: false };
+  const bookings = getBookings();
+  const start = new Date(startDateStr).getTime();
+  const end = new Date(endDateStr).getTime();
+
+  for (const b of bookings) {
+    if (b.productId === productId && b.status === 'confirmed') {
+      const bStart = new Date(b.startDate).getTime();
+      const bEnd = new Date(b.endDate).getTime();
+      // Overlap check
+      if (start <= bEnd && end >= bStart) {
+        return {
+          hasConflict: true,
+          conflictingBooking: b,
+          message: `Dates conflict! This dress is already booked in Quetta from ${b.startDate} to ${b.endDate}. Please choose different dates.`
+        };
+      }
+    }
+  }
+  return { hasConflict: false };
+}
+
+// ==========================================
+// 11. Customer Reviews & Ratings Engine
+// ==========================================
+export function getReviews(productId = null) {
+  const saved = localStorage.getItem('mamas_reviews');
+  let reviews = [];
+  if (saved) {
+    try {
+      reviews = JSON.parse(saved);
+    } catch (e) {
+      // fallback
+    }
+  }
+
+  if (!reviews || reviews.length === 0) {
+    reviews = [
+      {
+        id: 'rev_1',
+        productId: 'mc-001',
+        authorName: 'Sana Zehri',
+        authorCity: 'Jinnah Town, Quetta',
+        rating: 5,
+        event: 'Barat',
+        fitting: 'Perfect Fit',
+        comment: 'Bohot hi pyara lehenga tha! Fabric aur embroidery exact photos jaisi luxury thi. Zarghoon lounge se pickup bhi bohot asaan raha.',
+        date: '3 days ago',
+        verifiedRental: true,
+        photo: 'https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?q=80&w=400'
+      },
+      {
+        id: 'rev_2',
+        productId: 'mc-001',
+        authorName: 'Hina Kakar',
+        authorCity: 'Quetta Cantt',
+        rating: 5,
+        event: 'Valima',
+        fitting: 'True to Size',
+        comment: 'Security deposit safely refund ho gaya. Highly recommended for bridal events in Quetta!',
+        date: '1 week ago',
+        verifiedRental: true,
+        photo: null
+      }
+    ];
+    localStorage.setItem('mamas_reviews', JSON.stringify(reviews));
+  }
+
+  if (productId) {
+    return reviews.filter(r => r.productId === productId);
+  }
+  return reviews;
+}
+
+export function addReview(newReview) {
+  const reviews = getReviews();
+  const fullReview = {
+    id: `rev_${Date.now()}`,
+    date: 'Just now',
+    verifiedRental: true,
+    ...newReview
+  };
+  const updated = [fullReview, ...reviews];
+  localStorage.setItem('mamas_reviews', JSON.stringify(updated));
+  return updated;
+}
+
+// ==========================================
+// 12. Escrow Amanat Wallet & Payout Service
+// ==========================================
+export function getSellerWallet(sellerPhoneOrName) {
+  const saved = localStorage.getItem('mamas_wallets');
+  let wallets = {};
+  if (saved) {
+    try {
+      wallets = JSON.parse(saved);
+    } catch (e) {
+      // fallback
+    }
+  }
+
+  const key = (sellerPhoneOrName || 'user_zarghoon').toLowerCase();
+  if (!wallets[key]) {
+    wallets[key] = {
+      availableBalance: 42000,
+      escrowPending: 15000,
+      lifetimeEarned: 135000,
+      completedOrdersCount: 6,
+      transactions: [
+        {
+          id: 'tx_01',
+          date: 'Yesterday',
+          type: 'Escrow Hold',
+          amount: 15000,
+          description: 'Rental order #ORD-7749 (In Inspection)',
+          status: 'Pending'
+        },
+        {
+          id: 'tx_02',
+          date: 'Nov 22, 2026',
+          type: 'Completed Payout',
+          amount: 28000,
+          description: 'Rental order #ORD-7612 (Completed & Approved)',
+          status: 'Released'
+        }
+      ]
+    };
+    localStorage.setItem('mamas_wallets', JSON.stringify(wallets));
+  }
+
+  return wallets[key];
+}
+
+export function requestWithdrawal(sellerPhoneOrName, amount, method, accountTitle, accountNumber) {
+  const saved = localStorage.getItem('mamas_wallets');
+  let wallets = saved ? JSON.parse(saved) : {};
+  const key = (sellerPhoneOrName || 'user_zarghoon').toLowerCase();
+  
+  if (!wallets[key]) {
+    wallets[key] = getSellerWallet(sellerPhoneOrName);
+  }
+
+  const wallet = wallets[key];
+  if (amount > wallet.availableBalance) {
+    return { success: false, error: 'Insufficient available balance' };
+  }
+
+  wallet.availableBalance -= Number(amount);
+  wallet.transactions.unshift({
+    id: `tx_w_${Date.now()}`,
+    date: 'Just now',
+    type: `Withdrawal (${method})`,
+    amount: Number(amount),
+    description: `Withdrawal to ${accountTitle} (${accountNumber})`,
+    status: 'Processing'
+  });
+
+  wallets[key] = wallet;
+  localStorage.setItem('mamas_wallets', JSON.stringify(wallets));
+
+  // Also log in withdrawals queue
+  const withdrawals = JSON.parse(localStorage.getItem('mamas_withdrawals') || '[]');
+  withdrawals.unshift({
+    id: `wth_${Date.now()}`,
+    seller: sellerPhoneOrName,
+    amount: Number(amount),
+    method,
+    accountTitle,
+    accountNumber,
+    requestedAt: new Date().toISOString(),
+    status: 'Pending Admin Approval'
+  });
+  localStorage.setItem('mamas_withdrawals', JSON.stringify(withdrawals));
+
+  return { success: true, newBalance: wallet.availableBalance };
 }

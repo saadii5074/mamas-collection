@@ -16,6 +16,9 @@ import AuthModal from './components/AuthModal';
 import MyListingsModal from './components/MyListingsModal';
 import MobileBottomNav from './components/MobileBottomNav';
 import WhatsAppIcon from './components/WhatsAppIcon';
+import UserProfileManagerModal from './components/UserProfileManagerModal';
+import MakeOfferModal from './components/MakeOfferModal';
+import FlashDealsBanner from './components/FlashDealsBanner';
 import { 
   INITIAL_PRODUCTS, 
   INITIAL_COMMISSION_RATES 
@@ -27,7 +30,8 @@ import {
   incrementProductView, 
   toggleProductLike,
   verifyCartPriceIntegrity,
-  sanitizeInput
+  sanitizeInput,
+  addBooking
 } from './services/marketplaceService';
 import { 
   Sparkles, 
@@ -100,6 +104,9 @@ export default function App() {
   const [activeUser, setActiveUserState] = useState(() => getActiveUser());
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
   const [isMyListingsModalOpen, setIsMyListingsModalOpen] = useState(false);
+  const [isProfileManagerOpen, setIsProfileManagerOpen] = useState(false);
+  const [isMakeOfferOpen, setIsMakeOfferOpen] = useState(false);
+  const [offerProduct, setOfferProduct] = useState(null);
 
   // Persistence
   useEffect(() => {
@@ -284,6 +291,19 @@ export default function App() {
       priceTamperedDetected: hasTampering
     };
 
+    // Lock booked dates in calendar for any rental items
+    verifiedItems.forEach(item => {
+      if (item.bookingMode === 'rent' && item.startDate && item.endDate) {
+        addBooking({
+          productId: item.product.id,
+          startDate: item.startDate,
+          endDate: item.endDate,
+          customerName: orderData.customer?.name || 'Valued Customer',
+          status: 'confirmed'
+        });
+      }
+    });
+
     setOrders([orderWithStatus, ...orders]);
     setCartItems([]);
     setIsCheckoutOpen(false);
@@ -298,11 +318,19 @@ export default function App() {
     setProducts(products.filter(p => p.id !== productId));
   };
 
+  const handleOpenMakeOffer = (product) => {
+    setOfferProduct(product);
+    setIsMakeOfferOpen(true);
+  };
+
+  const handleSelectUser = (user) => {
+    saveActiveUser(user);
+    setActiveUserState(user);
+    setIsProfileManagerOpen(false);
+  };
+
   const handleSwitchRole = () => {
-    const isCurrentlyBuyer = !activeUser || activeUser.id === DEFAULT_USERS.buyer.id;
-    const nextUser = isCurrentlyBuyer ? DEFAULT_USERS.seller : DEFAULT_USERS.buyer;
-    saveActiveUser(nextUser);
-    setActiveUserState(nextUser);
+    setIsProfileManagerOpen(true);
   };
 
   const handleAuthSuccess = (userData) => {
@@ -345,6 +373,7 @@ export default function App() {
         onOpenMyListings={() => setIsMyListingsModalOpen(true)}
         onOpenAuth={() => setIsAuthModalOpen(true)}
         onSwitchRole={handleSwitchRole}
+        onOpenProfileManager={() => setIsProfileManagerOpen(true)}
       />
 
       {/* Main Content View Switcher */}
@@ -370,6 +399,11 @@ export default function App() {
             onOpenSellerPortal={() => setIsSellerPortalOpen(true)}
             activeMode={activeMode}
             setActiveMode={setActiveMode}
+          />
+
+          {/* Amazon-Style Lightning Flash Deals Countdown Banner */}
+          <FlashDealsBanner
+            onSelectFlashCategory={(cat) => setSelectedCategory(cat)}
           />
 
           {/* 3. FILTER BAR (Quetta Areas, Barat/Valima/Mehndi Events, Colors, Sizes) */}
@@ -590,11 +624,15 @@ export default function App() {
       {/* Product Detail & Rental Calculator Modal */}
       {selectedProductForModal && (
         <ProductDetailModal
+          isOpen={!!selectedProductForModal}
           product={selectedProductForModal}
           initialBookingType={modalInitialMode}
+          initialMode={modalInitialMode}
+          activeUser={activeUser}
           onClose={() => setSelectedProductForModal(null)}
           onAddToCart={handleAddToCart}
           onOpenChatWithProduct={handleOpenChatWithProduct}
+          onOpenMakeOffer={handleOpenMakeOffer}
         />
       )}
 
@@ -677,6 +715,25 @@ export default function App() {
         onOpenSellerPortal={() => {
           setIsMyListingsModalOpen(false);
           setIsSellerPortalOpen(true);
+        }}
+      />
+
+      {/* Multi-Account Profile Switcher & Creator Modal */}
+      <UserProfileManagerModal
+        isOpen={isProfileManagerOpen}
+        onClose={() => setIsProfileManagerOpen(false)}
+        activeUser={activeUser}
+        onSelectUser={handleSelectUser}
+      />
+
+      {/* OLX-Style Make an Offer Bargaining Modal */}
+      <MakeOfferModal
+        isOpen={isMakeOfferOpen}
+        onClose={() => setIsMakeOfferOpen(false)}
+        product={offerProduct}
+        activeUser={activeUser}
+        onOfferSubmitted={(offer) => {
+          // Refresh products or listings state if needed
         }}
       />
 
